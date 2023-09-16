@@ -3,7 +3,7 @@
 #include <WiFi.h>
 #include <FirebaseESP32.h>
 
-uint8_t broadcastAddress[] = {0x78, 0x21, 0x84, 0xDD, 0xF8, 0x74};
+uint8_t broadcastAddress[] = {0xB0,0xB2,0x1C,0x97,0x7B,0xA4}; //espDevice
 
 typedef struct struct_message {
   int mode;
@@ -190,6 +190,8 @@ void setup() {
     delay(500);
   }
   Serial.println();
+  Serial.print("WiFi channel: ");
+  Serial.println(WiFi.channel());
 
   /* Assign the api key (required) */
   config.api_key = API_KEY;

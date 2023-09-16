@@ -1,15 +1,20 @@
 #include <Arduino.h>
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include <WiFi.h>
 
 // Structure example to receive data
 // Must match the sender structure
 typedef struct struct_message {
-  int dhtHum;
-  int dhtTemp; 
-  int light; 
-  int lm35Temp; 
-  int soil; 
+  int mode;
+  int hourMotor; 
+  int hourPump; 
+  int humThreshold; 
+  int lightThreshold; 
+  int soilThreshold;
+  int tempThreshold; 
+  int timeMotor; 
+  int timePump; 
   int bulbStatus; 
   int fanStatus; 
   int motorStatus; 
@@ -23,6 +28,17 @@ struct_message myData;
 #define WIFI_SSID         "Free Wifi"
 #define WIFI_PASSWORD     "12345679Aa"
 
+int32_t getWiFiChannel(const char *ssid) {
+  if (int32_t n = WiFi.scanNetworks()) {
+      for (uint8_t i=0; i<n; i++) {
+          if (!strcmp(ssid, WiFi.SSID(i).c_str())) {
+              return WiFi.channel(i);
+          }
+      }
+  }
+  return 0;
+}
+
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.println("Received Data.................");
@@ -30,16 +46,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.print("Bytes received: ");
   Serial.println(len);
 
-  Serial.print("dhtHum: ");
-  Serial.println(myData.dhtHum);
-  Serial.print("dhtTemp: ");
-  Serial.println(myData.dhtTemp);
-  Serial.print("light: ");
-  Serial.println(myData.light);
-  Serial.print("lm35Temp: ");
-  Serial.println(myData.lm35Temp);
-  Serial.print("soil: ");
-  Serial.println(myData.soil);
+  Serial.print("mode: ");
+  Serial.println(myData.mode);
   Serial.print("bulbStatus: ");
   Serial.println(myData.bulbStatus);
   Serial.print("fanStatus: ");
@@ -62,17 +70,25 @@ void setup() {
   Serial.begin(115200);
   
   // Set device as a Wi-Fi Station
-  WiFi.mode(WIFI_AP_STA);
-  // WiFi.mode(WIFI_STA);
+  // WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_STA);
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Connecting to Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.println(WiFi.status());
-    delay(500);
-  }
-  Serial.println();
+  int32_t channel = getWiFiChannel(WIFI_SSID);
+
+  WiFi.printDiag(Serial); // Uncomment to verify channel number before
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
+  WiFi.printDiag(Serial); // Uncomment to verify channel change after
+
+  // WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  // Serial.print("Connecting to Wi-Fi");
+  // while (WiFi.status() != WL_CONNECTED)
+  // {
+  //   Serial.println(WiFi.status());
+  //   delay(500);
+  // }
+  // Serial.println();
   Serial.print("WiFi channel: ");
   Serial.println(WiFi.channel());
 
