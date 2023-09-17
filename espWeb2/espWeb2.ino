@@ -2,24 +2,29 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <FirebaseESP32.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
-uint8_t broadcastAddress[] = {0xB0,0xB2,0x1C,0x97,0x7B,0xA4}; //espDevice
+uint8_t broadcastAddress[] = {0xB0, 0xB2, 0x1C, 0x97, 0x7B, 0xA4}; //espDevice
 
 typedef struct struct_message {
   int mode;
   int hourMotor; 
-  int hourPump; 
+  int hour1Pump;
+  int hour2Pump; 
   int humThreshold; 
   int lightThreshold; 
   int soilThreshold;
   int tempThreshold; 
   int timeMotor; 
-  int timePump; 
+  int time1Pump;
+  int time2Pump; 
   int bulbStatus; 
   int fanStatus; 
   int motorStatus; 
   int pump1Status; 
   int pump2Status;
+  int chenang;
 } struct_message;
 
 struct_message myData;
@@ -30,6 +35,14 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("\r\nLast Packet Send Status:\t");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
+
+//address NTP
+const char* ntpServer = "pool.ntp.org";
+const int timeZone = 7;  // UTC+7 (Việt Nam)
+int 
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, ntpServer, timeZone * 3600);
 
 /* 1. Define the WiFi credentials */
 #define WIFI_SSID         "Free Wifi"
@@ -53,20 +66,24 @@ FirebaseData data;
 
 String dataPath = "/";
 
-String childPath[14] = {"/mode",
+String childPath[17] = {"/mode",
                         "/settingThreshold/hourMotor", 
-                        "/settingThreshold/hourPump", 
+                        "/settingThreshold/hour1Pump", 
                         "/settingThreshold/humThreshold", 
                         "/settingThreshold/lightThreshold", 
                         "/settingThreshold/soilThreshold",
                         "/settingThreshold/tempThreshold", 
                         "/settingThreshold/timeMotor", 
-                        "/settingThreshold/timePump", 
+                        "/settingThreshold/time1Pump", 
                         "/status/bulbStatus", 
                         "/status/fanStatus", 
                         "/status/motorStatus", 
                         "/status/pump1Status", 
-                        "/status/pump2Status"};
+                        "/status/pump2Status"
+                        "/status/chenang",
+                        "/settingThreshold/hour2Pump",
+                        "/settingThreshold/time2Pump" 
+                        };
 
 void dataStreamCallback(MultiPathStreamData stream)
 {
@@ -93,7 +110,7 @@ void dataStreamCallback(MultiPathStreamData stream)
         }
         case 2:
         {
-          myData.hourPump = stream.value.toInt();
+          myData.hour1Pump = stream.value.toInt();
           break;
         }
         case 3:
@@ -123,7 +140,7 @@ void dataStreamCallback(MultiPathStreamData stream)
         }
         case 8:
         {
-          myData.timePump = stream.value.toInt();
+          myData.time1Pump = stream.value.toInt();
           break;
         }
         case 9:
@@ -149,6 +166,21 @@ void dataStreamCallback(MultiPathStreamData stream)
         case 13:
         {
           myData.pump2Status = stream.value.toInt();
+          break;
+        }
+        case 14:
+        {
+          myData.chenang = stream.value.toInt();
+          break;
+        }
+        case 15:
+        {
+          myData.hour2Pump = stream.value.toInt();
+          break;
+        }
+        case 16:
+        {
+          myData.time2Pump = stream.value.toInt();
           break;
         }
       }
@@ -208,6 +240,7 @@ void setup() {
   Firebase.begin(&config, &auth);
   Serial.println("Connected to Firebase");
 
+  timeClient.begin();
 
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////// Init ESP-NOW  ///////////////////////////////////////
@@ -244,6 +277,12 @@ void setup() {
 
 }
 
+//thêm 1 biến làm flag đã gửi message qua device hay chưa
+
 void loop() {
+  timeClient.update();
+
+  Serial.println(timeClient.getFormattedTime());
+
 
 }

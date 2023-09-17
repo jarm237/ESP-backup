@@ -14,6 +14,7 @@ typedef struct struct_message {
   int motorStatus; 
   int pump1Status; 
   int pump2Status;
+  int chenang;
 } struct_message;
 
 struct_message myData;
@@ -61,6 +62,7 @@ String fanStatusPath = "/fanStatus";
 String motorStatusPath = "/motorStatus";
 String pump1StatusPath = "/pump1Status";
 String pump2StatusPath = "/pump2Status";
+String chenangPath = "/chenang";
 
 FirebaseJson jsonSensor;
 FirebaseJson jsonStatus;
@@ -194,6 +196,7 @@ void loop() {
     jsonStatus.set(motorStatusPath, myData.motorStatus);
     jsonStatus.set(pump1StatusPath, myData.pump1Status);
     jsonStatus.set(pump2StatusPath, myData.pump2Status);
+    jsonStatus.set(chenangPath, myData.chenang);
 
     Serial.println("JSON set done");
 

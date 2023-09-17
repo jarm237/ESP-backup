@@ -33,7 +33,7 @@ const int LS2_Pin = 14;
 
 int permin = 4095;
 int permax = 3230;
-bool fan = 0, motor = 0, pump1 = 0, pump2 = 0, bulb = 0;
+bool fan = 0, motor = 0, pump1 = 0, pump2 = 0, bulb = 0, chenang = 0;
 float dhtHum, dhtTemp, lm35Temp, soil;
 uint16_t light;
 
@@ -57,6 +57,7 @@ typedef struct received_message {
   int motorStatus; 
   int pump1Status; 
   int pump2Status;
+  int chenang;
 } received_message;
 
 typedef struct send_message {
@@ -70,6 +71,7 @@ typedef struct send_message {
   int motorStatus; 
   int pump1Status; 
   int pump2Status;
+  int chenang;
 } send_message;
 
 received_message  myDataReceived;
@@ -221,6 +223,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   pump1 = myDataReceived.pump1Status;
   pump2 = myDataReceived.pump2Status;
   bulb = myDataReceived.bulbStatus;
+  chenang = myDataReceived.chenang;
   
   int ls1Status = digitalRead(LS1_Pin); //=1 rèm đang mở đón nắng
   int ls2Status = digitalRead(LS2_Pin); //=1 rèm đang đóng che nắng
@@ -250,29 +253,29 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       }
 
       //motor
-      // if (motor == 1 && myDataReceived.chenang == 1) { 
-      //   //che nang
-      //   if (ls1Status == 1) {
-      //     motor_che(120);
-      //     if (ls2Status == 1) {
-      //       motor_Dung();
-      //     }
-      //   } else if (ls2Status == 1) {
-      //     motor_Dung();
-      //   }
-      // } else if (myDataReceived.motorStatus == 1 && myDataReceived.chenang == 0) {
-      //   //koche
-      //   if (ls2Status == 1) {
-      //     motor_koche(120);
-      //     if (ls1Status == 1) {
-      //       motor_Dung();
-      //     }
-      //   } else if (ls1Status == 1) {
-      //     motor_Dung();
-      //   }
-      // } else {
-      //   motor_Dung();
-      // }   
+      if (motor == 1 && chenang == 1) { 
+        //che nang
+        if (ls1Status == 1) {
+          motor_che(120);
+          if (ls2Status == 1) {
+            motor_Dung();
+          }
+        } else if (ls2Status == 1) {
+          motor_Dung();
+        }
+      } else if (motorStatus == 1 && chenang == 0) {
+        //koche
+        if (ls2Status == 1) {
+          motor_koche(120);
+          if (ls1Status == 1) {
+            motor_Dung();
+          }
+        } else if (ls1Status == 1) {
+          motor_Dung();
+        }
+      } else {
+        motor_Dung();
+      }   
       break;
     case 1:
       //Nhiet do: Den suoi + Bom phun suong
@@ -311,6 +314,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
         fan = 1;
       }
 
+      
+
       myDataSend.dhtHum = dhtHum;
       myDataSend.dhtTemp = dhtTemp;
       myDataSend.lm35Temp = lm35Temp;
@@ -322,6 +327,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       myDataSend.pump1Status = pump1;
       myDataSend.pump2Status = pump2;
       myDataSend.bulbStatus = bulb;
+      myDataSend.chenang = chenang;
       
       // Send message via ESP-NOW
       esp_err_t result1 = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
@@ -385,6 +391,7 @@ void loop()
   myDataSend.pump1Status = pump1;
   myDataSend.pump2Status = pump2;
   myDataSend.bulbStatus = bulb;
+  myDataSend.chenang = chenang;
 
   // Send message via ESP-NOW
   esp_err_t result = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
