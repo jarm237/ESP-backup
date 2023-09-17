@@ -9,22 +9,18 @@ uint8_t broadcastAddress[] = {0xB0, 0xB2, 0x1C, 0x97, 0x7B, 0xA4}; //espDevice
 
 typedef struct struct_message {
   int mode;
-  int hourMotor; 
-  int hour1Pump;
-  int hour2Pump; 
+  bool flagMotor; 
+  bool flagPump;
   int humThreshold; 
   int lightThreshold; 
   int soilThreshold;
-  int tempThreshold; 
-  int timeMotor; 
-  int time1Pump;
-  int time2Pump; 
+  int tempThreshold;  
   int bulbStatus; 
   int fanStatus; 
   int motorStatus; 
   int pump1Status; 
   int pump2Status;
-  int chenang;
+  // int chenang;
 } struct_message;
 
 struct_message myData;
@@ -39,7 +35,9 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 //address NTP
 const char* ntpServer = "pool.ntp.org";
 const int timeZone = 7;  // UTC+7 (Việt Nam)
-int 
+int hourMotor, timeMotor;
+int hour1Pump, time1Pump;
+int hour2Pump, time2Pump;
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, ntpServer, timeZone * 3600);
@@ -61,12 +59,14 @@ NTPClient timeClient(ntpUDP, ntpServer, timeZone * 3600);
 FirebaseAuth auth;
 FirebaseConfig config;
 
+FirebaseData fdbo;
+
 // Define Firebase Data object
 FirebaseData data;
 
 String dataPath = "/";
 
-String childPath[17] = {"/mode",
+String childPath[15] = {"/mode",
                         "/settingThreshold/hourMotor", 
                         "/settingThreshold/hour1Pump", 
                         "/settingThreshold/humThreshold", 
@@ -77,13 +77,12 @@ String childPath[17] = {"/mode",
                         "/settingThreshold/time1Pump", 
                         "/status/bulbStatus", 
                         "/status/fanStatus", 
-                        "/status/motorStatus", 
+                        // "/status/motorStatus", 
                         "/status/pump1Status", 
-                        "/status/pump2Status"
-                        "/status/chenang",
+                        "/status/pump2Status",
+                        // "/status/chenang",
                         "/settingThreshold/hour2Pump",
-                        "/settingThreshold/time2Pump" 
-                        };
+                        "/settingThreshold/time2Pump" };
 
 void dataStreamCallback(MultiPathStreamData stream)
 {
@@ -105,12 +104,12 @@ void dataStreamCallback(MultiPathStreamData stream)
         }
         case 1:
         {
-          myData.hourMotor = stream.value.toInt();
+          hourMotor = stream.value.toInt();
           break;
         }
         case 2:
         {
-          myData.hour1Pump = stream.value.toInt();
+          hour1Pump = stream.value.toInt();
           break;
         }
         case 3:
@@ -135,12 +134,12 @@ void dataStreamCallback(MultiPathStreamData stream)
         }
         case 7:
         {
-          myData.timeMotor = stream.value.toInt();
+          timeMotor = stream.value.toInt();
           break;
         }
         case 8:
         {
-          myData.time1Pump = stream.value.toInt();
+          time1Pump = stream.value.toInt();
           break;
         }
         case 9:
@@ -153,34 +152,40 @@ void dataStreamCallback(MultiPathStreamData stream)
           myData.fanStatus = stream.value.toInt();
           break;
         }
+        // case 11:
+        // {
+        //   myData.motorStatus = stream.value.toInt();
+        //   Serial.print("Motor stream ...........................");
+        //   Serial.println(stream.value.toInt());
+        //   Serial.print("Motor myData        .................");
+        //   Serial.println(myData.motorStatus);
+        //   break;
+        // }
         case 11:
-        {
-          myData.motorStatus = stream.value.toInt();
-          break;
-        }
-        case 12:
         {
           myData.pump1Status = stream.value.toInt();
           break;
         }
-        case 13:
+        case 12:
         {
           myData.pump2Status = stream.value.toInt();
           break;
         }
+        // case 14:
+        // {
+        //   myData.chenang = stream.value.toInt();
+        //   Serial.print("Che nang                .......................................");
+        //   Serial.println(myData.chenang);
+        //   break;
+        // }
+        case 13:
+        {
+          hour2Pump = stream.value.toInt();
+          break;
+        }
         case 14:
         {
-          myData.chenang = stream.value.toInt();
-          break;
-        }
-        case 15:
-        {
-          myData.hour2Pump = stream.value.toInt();
-          break;
-        }
-        case 16:
-        {
-          myData.time2Pump = stream.value.toInt();
+          time2Pump = stream.value.toInt();
           break;
         }
       }
@@ -194,6 +199,8 @@ void dataStreamCallback(MultiPathStreamData stream)
     
     if (result == ESP_OK) {
       Serial.println("Sent with success");
+      Serial.print("Motor status ");
+      Serial.println(myData.motorStatus);
     }
     else {
       Serial.print("Error sending the data, result = ");
@@ -275,14 +282,122 @@ void setup() {
   
   Firebase.setMultiPathStreamCallback(data, dataStreamCallback, streamTimeoutCallback);
 
+
+
+
+
+  if (!Firebase.beginStream(fdbo, "/status/motorStatus"))
+    Serial.printf("Data stream begin error, %s\n\n", fdbo.errorReason().c_str());
+  
+  delay(1000);
+  
+  Firebase.setStreamCallback(fdbo, fdboStreamCallback, streamTimeoutCallback);
+
+}
+
+void fdboStreamCallback(StreamData data) {
+  Serial.println("Stream Data...");
+  Serial.println(data.streamPath());
+  Serial.println(data.dataPath());
+  Serial.println(data.dataType());
+  Serial.println(data.to<int>());
+
+  myData.motorStatus = data.to<int>();
+
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+    
+  if (result == ESP_OK) {
+    Serial.println("Sent with success");
+    Serial.print("Motor status ");
+    Serial.println(myData.motorStatus);
+  }
+  else {
+    Serial.print("Error sending the data, result = ");
+    Serial.println(result);
+  }
 }
 
 //thêm 1 biến làm flag đã gửi message qua device hay chưa
+bool flagPumpSent = 0;
+bool flagMotorSent = 0;
 
 void loop() {
   timeClient.update();
 
-  Serial.println(timeClient.getFormattedTime());
+  if (!flagPumpSent) {
+    if ((timeClient.getHours() == hour1Pump 
+                  || timeClient.getHours() == hour2Pump) 
+                  && timeClient.getMinutes() == 21) {
+      myData.flagPump = 1;
+      flagPumpSent = 1;
 
+      esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+    
+      if (result == ESP_OK) {
+        Serial.println("Sent with success flag pump");
+      }
+      else {
+        Serial.print("Error sending the data, result = ");
+        Serial.println(result);
+      }
 
+      delay(1000);
+    }
+  } else {
+    if ((timeClient.getHours() == hour1Pump + time1Pump/60 && timeClient.getMinutes() == time1Pump%60)
+                  || (timeClient.getHours() == hour2Pump + time2Pump/60 && timeClient.getMinutes() == time2Pump%60)) {
+      myData.flagPump = 0;
+      flagPumpSent = 0;
+
+      esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+    
+      if (result == ESP_OK) {
+        Serial.println("Sent with success flag pump");
+      }
+      else {
+        Serial.print("Error sending the data, result = ");
+        Serial.println(result);
+      }
+
+      delay(1000);
+    }
+  }
+
+  if (!flagMotorSent) {
+    if (timeClient.getHours() == hourMotor 
+                  && timeClient.getMinutes() == 21) {
+      myData.flagMotor = 1;
+      flagMotorSent = 1;
+      
+      esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+    
+      if (result == ESP_OK) {
+        Serial.println("Sent with success flag motor");
+      }
+      else {
+        Serial.print("Error sending the data, result = ");
+        Serial.println(result);
+      }
+
+      delay(1000);
+    }
+  } else {
+    if (timeClient.getHours() == hourMotor + timeMotor/60 
+                  && timeClient.getMinutes() == timeMotor%60) {
+      myData.flagMotor = 0;
+      flagMotorSent = 0;
+
+      esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+    
+      if (result == ESP_OK) {
+        Serial.println("Sent with success flag motor");
+      }
+      else {
+        Serial.print("Error sending the data, result = ");
+        Serial.println(result);
+      }
+
+      delay(1000);
+    }
+  }
 }

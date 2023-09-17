@@ -97,6 +97,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.println(myData.pump1Status);
   Serial.print("pump2Status: ");
   Serial.println(myData.pump2Status);
+  Serial.print("chenang: ");
+  Serial.println(myData.chenang);
   
   Serial.println();
 

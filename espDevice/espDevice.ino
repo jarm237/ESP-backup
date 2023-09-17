@@ -33,9 +33,17 @@ const int LS2_Pin = 14;
 
 int permin = 4095;
 int permax = 3230;
-bool fan = 0, motor = 0, pump1 = 0, pump2 = 0, bulb = 0, chenang = 0;
+bool mode = 0, fan = 0, motor = 0, pump1 = 0, pump2 = 0, bulb = 0, chenang = 0;   //pump1: phun suong; //pump2: tuoi goc
+// bool flagMotor;
+// bool flagPump;
+// int humThreshold; 
+// int lightThreshold; 
+// int soilThreshold;
+// int tempThreshold;
 float dhtHum, dhtTemp, lm35Temp, soil;
+int analogSoil;
 uint16_t light;
+int ls1Status, ls2Status;
 
 BH1750 lightMeter;
 DHT dht(DHTPIN, DHTTYPE);
@@ -44,20 +52,17 @@ DHT dht(DHTPIN, DHTTYPE);
 // Must match the sender structure
 typedef struct received_message {
   int mode;
-  int hourMotor; 
-  int hourPump; 
+  bool flagMotor;
+  bool flagPump;
   int humThreshold; 
   int lightThreshold; 
   int soilThreshold;
   int tempThreshold; 
-  int timeMotor; 
-  int timePump; 
   int bulbStatus; 
   int fanStatus; 
   int motorStatus; 
   int pump1Status; 
   int pump2Status;
-  int chenang;
 } received_message;
 
 typedef struct send_message {
@@ -217,74 +222,101 @@ void setup() {
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   memcpy(&myDataReceived, incomingData, sizeof(myDataReceived));
+  Serial.println("Received Data ..................");
+  // mode = myDataReceived.mode;
+  // fan = myDataReceived.fanStatus;
+  // motor = myDataReceived.motorStatus;
+  // pump1 = myDataReceived.pump1Status;
+  // pump2 = myDataReceived.pump2Status;
+  // bulb = myDataReceived.bulbStatus;
+  // chenang = myDataReceived.chenang;
 
-  fan = myDataReceived.fanStatus;
-  motor = myDataReceived.motorStatus;
-  pump1 = myDataReceived.pump1Status;
-  pump2 = myDataReceived.pump2Status;
-  bulb = myDataReceived.bulbStatus;
-  chenang = myDataReceived.chenang;
-  
-  int ls1Status = digitalRead(LS1_Pin); //=1 rèm đang mở đón nắng
-  int ls2Status = digitalRead(LS2_Pin); //=1 rèm đang đóng che nắng
+  // Serial.print("che nang: .......................................................................");
+  // Serial.println(chenang);
+  // Serial.println(myDataReceived.chenang);
+  Serial.print("motor: .......................................................................");
+  Serial.println(motor);
+  Serial.println(myDataReceived.motorStatus);
+
+  // flagMotor = myDataReceived.flagMotor;
+  // flagPump = myDataReceived.flagPump;
+  // humThreshold = myDataReceived.humThreshold;
+  // lightThreshold = myDataReceived.lightThreshold; 
+  // soilThreshold = myDataReceived.soilThreshold;
+  // tempThreshold = myDataReceived.tempThreshold; 
 
   switch (myDataReceived.mode)
   {
     case 0:
+      //den suoi
+      if (myDataReceived.bulbStatus == 1) {
+        bulb_Start();
+        bulb = 1;
+      } else {
+        bulb_Stop();
+        bulb = 0;
+      }
+
       //quat
-      if (fan == 1) {
+      if (myDataReceived.fanStatus == 1) {
         fan_Start();
+        fan = 1;
       } else {
         fan_Stop();
+        fan = 0;
       }
 
       //pump1
-      if (pump1 == 1) {
+      if (myDataReceived.pump1Status == 1) {
         pump1_Start();
+        pump1 = 1;
       } else {
         pump1_Stop();
+        pump1 = 0;
       }
 
       //pump2
-      if (pump2 == 1) {
+      if (myDataReceived.pump2Status == 1) {
         pump2_Start();
+        pump2 = 1;
       } else {
         pump2_Stop();
+        pump2 = 0;
       }
 
       //motor
-      if (motor == 1 && chenang == 1) { 
-        //che nang
-        if (ls1Status == 1) {
-          motor_che(120);
-          if (ls2Status == 1) {
-            motor_Dung();
-          }
-        } else if (ls2Status == 1) {
-          motor_Dung();
-        }
-      } else if (motorStatus == 1 && chenang == 0) {
-        //koche
-        if (ls2Status == 1) {
-          motor_koche(120);
-          if (ls1Status == 1) {
-            motor_Dung();
-          }
-        } else if (ls1Status == 1) {
-          motor_Dung();
-        }
+      if (myDataReceived.motorStatus == 1 && chenang == 1) { 
+        //dang che nang
+        motor_koche(120);  //   
+        motor = 1;
+        Serial.println("Motor = 1 Che nang = 1 ...................................");   
+      } else if (myDataReceived.motorStatus == 1 && chenang == 0) {
+        // dang ko che
+        motor_che(120);
+        motor = 1;
+        Serial.println("Motor = 1 Che nang = 0 ...................................");   
       } else {
         motor_Dung();
-      }   
+        motor = 0;
+        if (ls1Status == 1) {
+          chenang = 0;
+          Serial.println("Shader full open (Khong che nang chenang = 0)");
+          Serial.println("Khong quan tam motor, Che nang = 1 ...................................");   
+        } else if (ls2Status == 1) {
+          chenang = 1;
+          Serial.println("Shader full close (Che nang chenang = 1)");
+          Serial.println("Khong quan tam motor, Che nang = 0 ...................................");   
+        }
+      } 
       break;
     case 1:
       //Nhiet do: Den suoi + Bom phun suong
-      if (dhtTemp >= myDataReceived.tempThreshold - 2 && dhtTemp <= myDataReceived.tempThreshold + 2) {
+      if (dhtTemp >= myDataReceived.tempThreshold - 1 && dhtTemp <= myDataReceived.tempThreshold + 1) {
         pump1_Stop();
         bulb_Stop();
         pump1 = 0;
         bulb = 0;
-      } else if (dhtTemp < myDataReceived.tempThreshold - 2) {
+      } else if (dhtTemp < myDataReceived.tempThreshold - 1) {
         pump1_Stop();
         bulb_Start();
         pump1 = 0;
@@ -297,12 +329,12 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       }
 
       // Do am: Quạt + bơm phun sương
-      if (dhtHum >= myDataReceived.humThreshold - 2 && dhtHum <= myDataReceived.humThreshold + 2) {
+      if (dhtHum >= myDataReceived.humThreshold - 1 && dhtHum <= myDataReceived.humThreshold + 1) {
         pump1_Stop();
         fan_Stop();
         pump1 = 0;
         fan = 0;
-      } else if (dhtHum < myDataReceived.humThreshold - 2) {
+      } else if (dhtHum < myDataReceived.humThreshold - 1) {
         pump1_Start();
         fan_Stop();
         pump1 = 1;
@@ -314,31 +346,121 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
         fan = 1;
       }
 
-      
+      //bom tuoi goc theo gio + do am dat
+      if(myDataReceived.flagPump == 1)
+      {
+        pump2_Start();
+        pump2 = 1;
+      }
+      else
+      {
+        if(soil >= myDataReceived.soilThreshold - 1 && soil <= myDataReceived.soilThreshold + 1)
+        {
+          pump2_Stop();
+          pump2 = 0;
+        }
+        else if(soil < myDataReceived.soilThreshold - 1)
+        {
+          pump2_Start();
+          pump2 = 1;
+        }
+        else{
+          pump2_Stop();
+          pump2 = 0;
+        }
+      }
 
-      myDataSend.dhtHum = dhtHum;
-      myDataSend.dhtTemp = dhtTemp;
-      myDataSend.lm35Temp = lm35Temp;
-      myDataSend.soil = soil;
-      myDataSend.light = light;
-        
-      myDataSend.fanStatus = fan;
-      myDataSend.motorStatus = motor;
-      myDataSend.pump1Status = pump1;
-      myDataSend.pump2Status = pump2;
-      myDataSend.bulbStatus = bulb;
-      myDataSend.chenang = chenang;
-      
-      // Send message via ESP-NOW
-      esp_err_t result1 = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
-        
-      if (result1 == ESP_OK) {
-        Serial.println("Sent with success");
+      //man che cat nang
+      if(myDataReceived.flagMotor == 1)
+      {
+        if(chenang == 1)
+        {
+          motor_koche(120);
+          motor = 1;
+          // if(ls1Status == 1)
+          // {
+          //   motor_Dung();
+          //   motor = 0;
+          //   chenang = 0;
+          //   Serial.println("Shader full open (Khong che nang chenang = 0)");
+          // }
+        }
+        else
+        {
+          motor_Dung();
+          motor = 0;
+        }
       }
-      else {
-        Serial.println("Error sending the data");
-      }
+      else
+      {
+        if(light >= myDataReceived.lightThreshold - 1 && light <= myDataReceived.lightThreshold + 1)
+        {
+          motor_Dung();
+          motor = 0;
+        }
+        else if(light < myDataReceived.lightThreshold - 1)
+        {
+          if(chenang == 1)
+          {
+            motor_koche(120);
+            motor = 1;
+            // if (ls1Status == 1)
+            // {
+            //   motor_Dung();
+            //   motor = 0;
+            //   chenang = 0;
+            //   Serial.println("Shader full open (Khong che nang chenang = 0)");
+            // }
+          }
+          else{
+            motor_Dung();
+            motor = 0;
+          }
+        }
+        else{
+          if(chenang == 1)
+          {
+            motor_Dung();
+            motor = 0;
+          }
+          else
+          {
+            motor_che(120);
+            motor = 1;
+            // if(ls2Status == 1)
+            // {
+            //   motor_Dung();
+            //   motor = 0;
+            //   chenang = 1;
+            //   Serial.println("Shader full close (Che nang chenang = 1)");
+            // }
+          }
+        }
+      }     
       break;
+  }
+
+  myDataSend.dhtHum = dhtHum;
+  myDataSend.dhtTemp = dhtTemp;
+  myDataSend.lm35Temp = lm35Temp;
+  myDataSend.soil = soil;
+  myDataSend.light = light;
+    
+  myDataSend.fanStatus = fan;
+  myDataSend.motorStatus = motor;
+  myDataSend.pump1Status = pump1;
+  myDataSend.pump2Status = pump2;
+  myDataSend.bulbStatus = bulb;
+  myDataSend.chenang = chenang;
+  
+  // Send message via ESP-NOW
+  esp_err_t result1 = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
+    
+  if (result1 == ESP_OK) {
+    Serial.println("Sent with success");
+  }
+  else {
+    Serial.println("Error sending the data");
   }
 }
 
@@ -353,58 +475,109 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.println(WiFi.channel());
 }
 
+int i = 0;
+
 void loop() 
-{
-  /* DHT11 */
-  float dhtHum = dht.readHumidity();
-  float dhtTemp = dht.readTemperature();
-  /* LM35 */
-  float lm35Temp = (5.0*analogRead(PIN_LM35)*100.0/4096.0);
-  /* Soil soil */
-  int analogSoil = analogRead(PIN_SOIL);
-  if (analogSoil < permax) {
-    analogSoil = permax;
+{ 
+  i++;
+  ls1Status = digitalRead(LS1_Pin); //=1 rèm đang mở đón nắng
+  ls2Status = digitalRead(LS2_Pin); //=1 rèm đang đóng che nắng
+  if (motor == 1) {
+    if(ls1Status == 1 && chenang == 1)
+    {
+      motor_Dung();
+      motor = 0;
+      chenang = 0;
+      Serial.println("Shader full open (Khong che nang chenang = 0)");
+      myDataSend.chenang = chenang;
+      myDataSend.motorStatus = motor;
+
+      esp_err_t result = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
+    
+      Serial.print("result: ");
+      Serial.println(result);
+      if (result == ESP_OK) {
+        Serial.println("Sent with success");
+      }
+      else {
+        Serial.println("Error sending the data");
+      }
+    }
+    if(ls2Status == 1 && chenang == 0)
+    {
+      motor_Dung();
+      motor = 0;
+      chenang = 1;
+      Serial.println("Shader full close (Che nang chenang = 1)");
+
+      myDataSend.chenang = chenang;
+      myDataSend.motorStatus = motor;
+
+      esp_err_t result = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
+    
+      Serial.print("result: ");
+      Serial.println(result);
+      if (result == ESP_OK) {
+        Serial.println("Sent with success");
+      }
+      else {
+        Serial.println("Error sending the data");
+      }
+    }     
   }
-  if (analogSoil > permin) {
-    analogSoil = permin;
+  if (i == 50) {
+    i = 0;
+
+    /* DHT11 */
+    dhtHum = dht.readHumidity();
+    dhtTemp = dht.readTemperature();
+    /* LM35 */
+    lm35Temp = (5.0*analogRead(PIN_LM35)*100.0/4096.0);
+    /* Soil soil */
+    analogSoil = analogRead(PIN_SOIL);
+    if (analogSoil < permax) {
+      analogSoil = permax;
+    }
+    if (analogSoil > permin) {
+      analogSoil = permin;
+    }
+    soil = abs(float(float(permin - analogSoil) / float(permax - permin)) * 100);
+    /* BH1750 */
+    light = lightMeter.readLightLevel();
+    
+    // Set values to send
+
+    myDataSend.dhtHum = dhtHum;
+    myDataSend.dhtTemp = dhtTemp;
+    myDataSend.lm35Temp = lm35Temp;
+    myDataSend.soil = soil;
+    myDataSend.light = light;
+
+    Serial.println(dhtHum);
+    Serial.println(dhtTemp);
+    Serial.println(lm35Temp);
+    Serial.println(soil);
+    Serial.println(light);
+
+    myDataSend.fanStatus = fan;
+    myDataSend.motorStatus = motor;
+    myDataSend.pump1Status = pump1;
+    myDataSend.pump2Status = pump2;
+    myDataSend.bulbStatus = bulb;
+    myDataSend.chenang = chenang;
+
+    // Send message via ESP-NOW
+    esp_err_t result = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
+    
+    Serial.print("result: ");
+    Serial.println(result);
+    if (result == ESP_OK) {
+      Serial.println("Sent with success");
+    }
+    else {
+      Serial.println("Error sending the data");
+    }
   }
-  float soil = abs(float(float(permin - analogSoil) / float(permax - permin)) * 100);
-  /* BH1750 */
-  uint16_t light = lightMeter.readLightLevel();
-  
-  // Set values to send
-
-  myDataSend.dhtHum = dhtHum;
-  myDataSend.dhtTemp = dhtTemp;
-  myDataSend.lm35Temp = lm35Temp;
-  myDataSend.soil = soil;
-  myDataSend.light = light;
-
-  Serial.println(dhtHum);
-  Serial.println(dhtTemp);
-  Serial.println(lm35Temp);
-  Serial.println(soil);
-  Serial.println(light);
-
-  myDataSend.fanStatus = fan;
-  myDataSend.motorStatus = motor;
-  myDataSend.pump1Status = pump1;
-  myDataSend.pump2Status = pump2;
-  myDataSend.bulbStatus = bulb;
-  myDataSend.chenang = chenang;
-
-  // Send message via ESP-NOW
-  esp_err_t result = esp_now_send(espWeb1, (uint8_t *) &myDataSend, sizeof(myDataSend));
-  
-  Serial.print("result: ");
-  Serial.println(result);
-  if (result == ESP_OK) {
-    Serial.println("Sent with success");
-  }
-  else {
-    Serial.println("Error sending the data");
-  }
-
-  delay(5000);
+  delay(100);
 }
 
