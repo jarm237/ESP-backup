@@ -21,6 +21,7 @@ typedef struct struct_message {
   int pump1Status; 
   int pump2Status;
   // int chenang;
+  int isLight;
 } struct_message;
 
 struct_message myData;
@@ -66,7 +67,7 @@ FirebaseData data;
 
 String dataPath = "/";
 
-String childPath[15] = {"/mode",
+String childPath[16] = {"/mode",
                         "/settingThreshold/hourMotor", 
                         "/settingThreshold/hour1Pump", 
                         "/settingThreshold/humThreshold", 
@@ -82,7 +83,8 @@ String childPath[15] = {"/mode",
                         "/status/pump2Status",
                         // "/status/chenang",
                         "/settingThreshold/hour2Pump",
-                        "/settingThreshold/time2Pump" };
+                        "/settingThreshold/time2Pump",
+                        "/system/isLight"};
 
 void dataStreamCallback(MultiPathStreamData stream)
 {
@@ -186,6 +188,11 @@ void dataStreamCallback(MultiPathStreamData stream)
         case 14:
         {
           time2Pump = stream.value.toInt();
+          break;
+        }
+        case 15:
+        {
+          myData.isLight = stream.value.toInt();
           break;
         }
       }
@@ -327,7 +334,7 @@ void loop() {
   if (!flagPumpSent) {
     if ((timeClient.getHours() == hour1Pump 
                   || timeClient.getHours() == hour2Pump) 
-                  && timeClient.getMinutes() == 21) {
+                  && timeClient.getMinutes() == 0) {
       myData.flagPump = 1;
       flagPumpSent = 1;
 
@@ -365,7 +372,7 @@ void loop() {
 
   if (!flagMotorSent) {
     if (timeClient.getHours() == hourMotor 
-                  && timeClient.getMinutes() == 21) {
+                  && timeClient.getMinutes() == 0) {
       myData.flagMotor = 1;
       flagMotorSent = 1;
       

@@ -32,7 +32,7 @@ const int LS1_Pin = 12;
 const int LS2_Pin = 14;
 
 int permin = 4095;
-int permax = 3230;
+int permax = 1650;
 bool mode = 0, fan = 0, motor = 0, pump1 = 0, pump2 = 0, bulb = 0, chenang = 0;   //pump1: phun suong; //pump2: tuoi goc
 // bool flagMotor;
 // bool flagPump;
@@ -42,7 +42,7 @@ bool mode = 0, fan = 0, motor = 0, pump1 = 0, pump2 = 0, bulb = 0, chenang = 0; 
 // int tempThreshold;
 float dhtHum, dhtTemp, lm35Temp, soil;
 int analogSoil;
-uint16_t light;
+uint16_t light, isLight;
 int ls1Status, ls2Status;
 
 BH1750 lightMeter;
@@ -63,6 +63,7 @@ typedef struct received_message {
   int motorStatus; 
   int pump1Status; 
   int pump2Status;
+  int isLight;
 } received_message;
 
 typedef struct send_message {
@@ -244,6 +245,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   // lightThreshold = myDataReceived.lightThreshold; 
   // soilThreshold = myDataReceived.soilThreshold;
   // tempThreshold = myDataReceived.tempThreshold; 
+  isLight = myDataReceived.isLight;
 
   switch (myDataReceived.mode)
   {
@@ -543,7 +545,9 @@ void loop()
     }
     soil = abs(float(float(permin - analogSoil) / float(permax - permin)) * 100);
     /* BH1750 */
-    light = lightMeter.readLightLevel();
+    // light = lightMeter.readLightLevel();
+    light = isLight ? (int) random(8300, 8400) : (int) random(50, 60);
+    
     
     // Set values to send
 
