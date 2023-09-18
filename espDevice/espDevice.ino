@@ -42,7 +42,7 @@ bool mode = 0, fan = 0, motor = 0, pump1 = 0, pump2 = 0, bulb = 0, chenang = 0; 
 // int tempThreshold;
 float dhtHum, dhtTemp, lm35Temp, soil;
 int analogSoil;
-uint16_t light, isLight;
+uint16_t light, isLight, isHum, isTemp, isSoil;
 int ls1Status, ls2Status;
 
 BH1750 lightMeter;
@@ -64,6 +64,9 @@ typedef struct received_message {
   int pump1Status; 
   int pump2Status;
   int isLight;
+  int isHum;
+  int isTemp;
+  int isSoil;
 } received_message;
 
 typedef struct send_message {
@@ -531,23 +534,25 @@ void loop()
     i = 0;
 
     /* DHT11 */
-    dhtHum = dht.readHumidity();
-    dhtTemp = dht.readTemperature();
+    // dhtHum = dht.readHumidity();
+    // dhtTemp = dht.readTemperature();
     /* LM35 */
-    lm35Temp = (5.0*analogRead(PIN_LM35)*100.0/4096.0);
+    // lm35Temp = (5.0*analogRead(PIN_LM35)*100.0/4096.0);
     /* Soil soil */
-    analogSoil = analogRead(PIN_SOIL);
-    if (analogSoil < permax) {
-      analogSoil = permax;
-    }
-    if (analogSoil > permin) {
-      analogSoil = permin;
-    }
-    soil = abs(float(float(permin - analogSoil) / float(permax - permin)) * 100);
+    // analogSoil = analogRead(PIN_SOIL);
+    // if (analogSoil < permax) {
+    //   analogSoil = permax;
+    // }
+    // if (analogSoil > permin) {
+    //   analogSoil = permin;
+    // }
+    // soil = abs(float(float(permin - analogSoil) / float(permax - permin)) * 100);
     /* BH1750 */
     // light = lightMeter.readLightLevel();
     light = isLight ? (int) random(8300, 8400) : (int) random(50, 60);
-    
+    dhtHum = isHum ? (int) randum(80, 90) : (int) randum(70, 75);
+    dhtTemp = isTemp ? (int) randum(35, 37) : (int) randum(30, 31);
+    soil = isSoil ? (int) randum(85, 95) : (int) randum(70, 80);
     
     // Set values to send
 

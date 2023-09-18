@@ -22,6 +22,9 @@ typedef struct struct_message {
   int pump2Status;
   // int chenang;
   int isLight;
+  int isHum;
+  int isTemp;
+  int isSoil;
 } struct_message;
 
 struct_message myData;
@@ -67,7 +70,7 @@ FirebaseData data;
 
 String dataPath = "/";
 
-String childPath[16] = {"/mode",
+String childPath[19] = {"/mode",
                         "/settingThreshold/hourMotor", 
                         "/settingThreshold/hour1Pump", 
                         "/settingThreshold/humThreshold", 
@@ -84,7 +87,10 @@ String childPath[16] = {"/mode",
                         // "/status/chenang",
                         "/settingThreshold/hour2Pump",
                         "/settingThreshold/time2Pump",
-                        "/system/isLight"};
+                        "/system/isLight",
+                        "/system/isHum",
+                        "/system/isTemp",
+                        "/system/isSoil"};
 
 void dataStreamCallback(MultiPathStreamData stream)
 {
@@ -193,6 +199,21 @@ void dataStreamCallback(MultiPathStreamData stream)
         case 15:
         {
           myData.isLight = stream.value.toInt();
+          break;
+        }
+        case 16:
+        {
+          myData.isHum = stream.value.toInt();
+          break;
+        }
+        case 17:
+        {
+          myData.isTemp = stream.value.toInt();
+          break;
+        }
+        case 18:
+        {
+          myData.isSoil = stream.value.toInt();
           break;
         }
       }
